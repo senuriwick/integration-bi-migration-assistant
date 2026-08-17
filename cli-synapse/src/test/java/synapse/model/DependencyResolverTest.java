@@ -100,4 +100,60 @@ public class DependencyResolverTest {
         assertTrue(resolver.resolve(n).isEmpty());
         assertTrue(resolver.unresolvedNodes().isEmpty());
     }
+
+    @Test
+    public void implicitFaultSequenceIsDependency() {
+        Path dir = GRAPH.resolve("implicit-fault");
+        ArtifactNode fault = sequence("fault", dir.resolve("fault.xml"));
+        ArtifactNode n = api("N", dir.resolve("api.xml"));
+        DependencyResolver resolver = new DependencyResolver(List.of(fault, n));
+
+        assertEquals(ids(resolver.resolve(n)), Set.of("SEQUENCE:fault"));
+        assertTrue(resolver.unresolvedNodes().isEmpty());
+    }
+
+    @Test
+    public void noImplicitFaultWhenAbsent() {
+        ArtifactNode n = api("N", GRAPH.resolve("no-fault-sequence").resolve("api.xml"));
+        DependencyResolver resolver = new DependencyResolver(List.of(n));
+
+        assertTrue(resolver.resolve(n).isEmpty(), "no 'fault' sequence exists, so nothing should be added");
+        assertTrue(resolver.unresolvedNodes().isEmpty(), "the absence of a default fault sequence is not an error");
+    }
+
+    @Test
+    public void unresolvedFaultKeyFallsBackToDefault() {
+        Path dir = GRAPH.resolve("unresolved-fault-key-with-default");
+        ArtifactNode fault = sequence("fault", dir.resolve("fault.xml"));
+        ArtifactNode n = api("N", dir.resolve("api.xml"));
+        DependencyResolver resolver = new DependencyResolver(List.of(fault, n));
+
+        assertEquals(ids(resolver.resolve(n)), Set.of("SEQUENCE:fault"));
+        assertEquals(resolver.unresolvedNodes().size(), 1);
+        ArtifactNode missing = resolver.unresolvedNodes().iterator().next();
+        assertEquals(missing.name(), "missing");
+    }
+
+    @Test
+    public void faultKeyEqualToDefaultNotDuplicated() {
+        Path dir = GRAPH.resolve("fault-key-equals-default");
+        ArtifactNode fault = sequence("fault", dir.resolve("fault.xml"));
+        ArtifactNode n = api("N", dir.resolve("api.xml"));
+        DependencyResolver resolver = new DependencyResolver(List.of(fault, n));
+
+        List<ArtifactNode> resolved = resolver.resolve(n);
+        assertEquals(resolved.size(), 1, "the explicit and implicit references to 'fault' must collapse into one edge");
+        assertEquals(resolved.get(0).id(), "SEQUENCE:fault");
+    }
+
+    @Test
+    public void aggregatesFaultAcrossResources() {
+        Path dir = GRAPH.resolve("multi-resource-fault");
+        ArtifactNode known = sequence("known", dir.resolve("known.xml"));
+        ArtifactNode fault = sequence("fault", dir.resolve("fault.xml"));
+        ArtifactNode n = api("N", dir.resolve("api.xml"));
+        DependencyResolver resolver = new DependencyResolver(List.of(known, fault, n));
+
+        assertEquals(ids(resolver.resolve(n)), Set.of("SEQUENCE:known", "SEQUENCE:fault"));
+    }
 }

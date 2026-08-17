@@ -1,0 +1,15 @@
+<api context="/audit" name="AuditClass" xmlns="http://ws.apache.org/ns/synapse">
+    <resource methods="GET" uri-template="/scan">
+        <inSequence>
+            <payloadFactory media-type="json">
+                <format>{"msg":"checking"}</format>
+            </payloadFactory>
+            <property name="who" value="world"/>
+            <class name="javasamples.AuditMediator">
+                <property name="targetConfig" expression="$ctx:who"/>
+                <property name="statusInfo" expression="get-property('axis2', 'HTTP_SC')"/>
+            </class>
+            <respond/>
+        </inSequence>
+    </resource>
+</api>

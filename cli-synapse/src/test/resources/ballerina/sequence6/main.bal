@@ -5,6 +5,9 @@ public listener http:Listener httpListener = new (8080);
 service /HelloWorld on httpListener {
     resource function get direct(http:Caller caller) returns error? {
         Context ctx = {variables: {}, caller: caller};
-        check respond(ctx);
+        do {
+            check respond(ctx);
+        } on fail error err {
+        }
     }
 }

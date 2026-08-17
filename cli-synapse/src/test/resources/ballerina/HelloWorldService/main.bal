@@ -5,31 +5,46 @@ public listener http:Listener httpListener = new (8080);
 service /HelloWorld on httpListener {
     resource function get .(http:Caller caller) returns error? {
         Context ctx = {variables: {}, caller: caller};
-        ctx.payload = {"Hello": "World"};
-        check respond(ctx);
+        do {
+            ctx.payload = {"Hello": "World"};
+            check respond(ctx);
+        } on fail error err {
+        }
     }
 
     resource function get status(http:Caller caller) returns error? {
         Context ctx = {variables: {}, caller: caller};
-        ctx.payload = {"Hello": "World"};
-        check respond(ctx);
+        do {
+            ctx.payload = {"Hello": "World"};
+            check respond(ctx);
+        } on fail error err {
+        }
     }
 
     resource function get status/[string id](http:Caller caller) returns error? {
         Context ctx = {variables: {}, caller: caller};
-        ctx.payload = {"Hello": "World"};
-        check respond(ctx);
+        do {
+            ctx.payload = {"Hello": "World"};
+            check respond(ctx);
+        } on fail error err {
+        }
     }
 
     resource function get status/[string name]/[string id](string q, http:Caller caller) returns error? {
         Context ctx = {variables: {}, caller: caller};
-        ctx.payload = {"Hello": "World"};
-        check respond(ctx);
+        do {
+            ctx.payload = {"Hello": "World"};
+            check respond(ctx);
+        } on fail error err {
+        }
     }
 
     resource function get .(string p, http:Caller caller) returns error? {
         Context ctx = {variables: {}, caller: caller};
-        ctx.payload = {"Hello": "World"};
-        check respond(ctx);
+        do {
+            ctx.payload = {"Hello": "World"};
+            check respond(ctx);
+        } on fail error err {
+        }
     }
 }

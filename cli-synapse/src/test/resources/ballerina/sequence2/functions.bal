@@ -10,6 +10,10 @@ function sequence(Context ctx) returns error? {
 }
 
 function respond(Context ctx) returns error? {
+    if ctx.responded {
+        return;
+    }
+    ctx.responded = true;
     http:Response response = new;
     response.setPayload(ctx.payload);
     foreach [string, string] [name, value] in ctx.headers.entries() {
