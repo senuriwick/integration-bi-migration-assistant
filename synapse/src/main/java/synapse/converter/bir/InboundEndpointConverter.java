@@ -196,9 +196,11 @@ public class InboundEndpointConverter implements BIRConverter<ConversionContext>
     }
 
     // A Synapse jms inbound endpoint is a fire-and-forget consumer with no reply transport: its
-    // resourceContext is built with supportsReply=false, so a <respond/> reached while converting
-    // its sequence is reported instead of converted (see RespondConverter), and its default fault
-    // handler only logs (see FaultSequenceConverter).
+    // resourceContext's ctx never gets a caller (see initContextWithoutCaller), so a <respond/>
+    // reached while converting its sequence, directly or via a called sequence, is still converted,
+    // but the generated respond() reports an error at runtime instead of attempting to reply. That keeps
+    // the generated code safe to compile, but it's still guaranteed to fail there at runtime, so
+    // reportUnsupportedRespondIfNeeded also flags it in the migration report for manual review.
     private static void convertJms(InboundEndpoint inboundEndpoint, ConversionContext context) {
         String baseName = ConversionUtils.lowerFirst(inboundEndpoint.name());
         String listenerName = baseName + LISTENER_SUFFIX;
@@ -254,7 +256,7 @@ public class InboundEndpointConverter implements BIRConverter<ConversionContext>
             context.addImports(ConversionContext.MAIN_BAL_FILE, List.of(JMS_ACTIVEMQ_DRIVER_IMPORT));
         }
 
-        ResourceContext resourceContext = new ResourceContext(context, false);
+        ResourceContext resourceContext = new ResourceContext(context);
         resourceContext.initContextWithoutCaller();
         resourceContext.statements().add(new Statement.BallerinaStatement(
                 "if message !is jms:TextMessage { fail error(\"Unsupported JMS message type: expected a "
@@ -326,7 +328,7 @@ public class InboundEndpointConverter implements BIRConverter<ConversionContext>
         context.addListener(new FileListener(listenerName, new VariableReference(pathVar), false));
         context.addImports(ConversionContext.MAIN_BAL_FILE, List.of(FILE_MODULE_IMPORT));
 
-        ResourceContext resourceContext = new ResourceContext(context, false);
+        ResourceContext resourceContext = new ResourceContext(context);
         resourceContext.initContextWithoutCaller();
         MediatorConverters.convertMediators(
                 List.of(new SequenceMediator(inboundEndpoint.sequenceKey())), resourceContext);
@@ -461,12 +463,12 @@ public class InboundEndpointConverter implements BIRConverter<ConversionContext>
     }
 
     // A referenced sequence may already have been converted standalone, assuming an http:Caller, before
-    // this inbound endpoint's protocol was known - RespondConverter had no chance to report a <respond/>
-    // there, so this surfaces that residual risk instead, even though the shared code can't be fixed here.
+    // this inbound endpoint's protocol was known - the generated respond() only reports an error at
+    // runtime there, so this surfaces the residual risk in the migration report instead.
     //
     // responded is captured by the caller rather than read off resourceContext directly, since
     // FaultSequenceConverter.wrapInFaultHandler resets isResponded() to false before converting fault
-    // mediators; reading it only after wrap() returns would miss a respond from the main sequence.
+    // mediators.
     private static void reportUnsupportedRespondIfNeeded(InboundEndpoint inboundEndpoint, boolean responded,
                                                           ConversionContext context) {
         if (!responded) {
