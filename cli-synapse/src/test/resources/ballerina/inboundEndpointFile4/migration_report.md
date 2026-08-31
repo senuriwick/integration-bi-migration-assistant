@@ -1,28 +1,8 @@
 # Synapse to Ballerina migration report
 
-17 Synapse constructs could not be automatically converted and were left as TODOs in the generated code. Each entry shows the source file and the original Synapse code; review and migrate them manually.
+15 Synapse constructs could not be automatically converted and were left as TODOs in the generated code. Each entry shows the source file and the original Synapse code; review and migrate them manually.
 
-## Unsupported mediator (3)
-
-### `<log>` — FileErrorSequence.xml
-
-Mediator not supported; manual conversion required.
-
-```xml
-<log category="ERROR" xmlns="http://ws.apache.org/ns/synapse">
-        <message>File processing failed: ${properties.synapse.ERROR_MESSAGE}</message>
-    </log>
-```
-
-### `<log>` — FileProcessSequence.xml
-
-Mediator not supported; manual conversion required.
-
-```xml
-<log category="INFO" logFullPayload="true" xmlns="http://ws.apache.org/ns/synapse">
-        <message>File received and processing complete</message>
-    </log>
-```
+## Unsupported mediator (1)
 
 ### `<drop>` — FileProcessSequence.xml
 

@@ -21,6 +21,7 @@ import org.jetbrains.annotations.NotNull;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import synapse.model.Synapse;
 import synapse.model.Synapse.Api;
 import synapse.model.Synapse.ClassMediator;
 import synapse.model.Synapse.FaultSequence;
@@ -28,6 +29,7 @@ import synapse.model.Synapse.FaultSequenceRef;
 import synapse.model.Synapse.InSequence;
 import synapse.model.Synapse.InboundEndpoint;
 import synapse.model.Synapse.KeyStoreConfig;
+import synapse.model.Synapse.Log;
 import synapse.model.Synapse.Param;
 import synapse.model.Synapse.PayloadFactory;
 import synapse.model.Synapse.Property;
@@ -43,6 +45,7 @@ import synapse.model.SynapseType;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 
@@ -65,6 +68,8 @@ public class SynapseModelGenerator {
     private static final String PAYLOAD_FACTORY_TAG = "payloadFactory";
     private static final String RESPOND_TAG = "respond";
     private static final String PROPERTY_TAG = "property";
+    private static final String LOG_TAG = "log";
+    private static final String DEFAULT_LOG_SEPARATOR = ", ";
     private static final String FORMAT_TAG = "format";
     private static final String CLASS_TAG = "class";
     private static final String INBOUND_ENDPOINT_TAG = "inboundEndpoint";
@@ -82,8 +87,8 @@ public class SynapseModelGenerator {
     private static final String DEFAULT_PROPERTY_ACTION = "set";
 
     // Unsupported mediators whose children are themselves mediator sequences (control-flow wrappers),
-    // so nested recognised mediators can still be converted. Other unsupported mediators (e.g. <log>,
-    // whose <property> child is a parameter, not a context-property set) are treated as opaque leaves.
+    // so nested recognised mediators can still be converted. Every other unsupported mediator is
+    // treated as an opaque leaf.
     private static final Set<String> CONTAINER_MEDIATOR_TAGS =
             Set.of("filter", "switch", "foreach", "iterate", "clone", "aggregate");
 
@@ -281,6 +286,7 @@ public class SynapseModelGenerator {
             case PAYLOAD_FACTORY_TAG -> readPayloadFactory(child);
             case RESPOND_TAG -> new Respond();
             case PROPERTY_TAG -> readProperty(child);
+            case LOG_TAG -> readLog(child);
             case SEQUENCE_TAG -> {
                 String key = child.getAttribute("key");
                 if (key.isBlank()) {
@@ -349,6 +355,42 @@ public class SynapseModelGenerator {
         }
 
         return new Property(name, type, scope, value, expression, omElement, action);
+    }
+
+    // level and category default to Synapse's own LogMediator defaults (Synapse.DEFAULT_LOG_LEVEL/
+    // DEFAULT_LOG_CATEGORY) when the attribute is blank, and are normalized (level lower-cased, category
+    // upper-cased) so the converter only needs to reject a genuinely unrecognized value rather than
+    // every casing variant. separator uses hasAttribute rather than a blank check: an explicit
+    // separator="" is a deliberate "no separator", distinct from the attribute being absent altogether,
+    // whereas Synapse has no such distinction for level/category.
+    @NotNull
+    private static Log readLog(Element element) {
+        String level = element.getAttribute("level");
+        level = level.isBlank() ? Synapse.DEFAULT_LOG_LEVEL : level.toLowerCase(Locale.ROOT);
+
+        String category = element.getAttribute("category");
+        category = category.isBlank() ? Synapse.DEFAULT_LOG_CATEGORY : category.toUpperCase(Locale.ROOT);
+
+        String separator = element.hasAttribute("separator")
+                ? unescapeSeparator(element.getAttribute("separator")) : DEFAULT_LOG_SEPARATOR;
+
+        List<Property> properties = new ArrayList<>();
+        List<String> unrecognizedChildren = new ArrayList<>();
+        for (Element child : childElements(element)) {
+            if (PROPERTY_TAG.equals(child.getTagName())) {
+                properties.add(readProperty(child));
+            } else {
+                unrecognizedChildren.add(serializeElement(child));
+            }
+        }
+        return new Log(level, category, separator, properties, unrecognizedChildren);
+    }
+
+    // Synapse authors write literal '\n'/'\t' escape sequences in the separator attribute text (e.g.
+    // separator="\n"); LogMediator#setSeparator unescapes them to a real newline/tab at runtime, so the
+    // reader does the same here.
+    private static String unescapeSeparator(String separator) {
+        return separator.replace("\\n", "\n").replace("\\t", "\t");
     }
 
     private static PayloadFactory readPayloadFactory(Element element) {

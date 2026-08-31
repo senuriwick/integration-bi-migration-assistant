@@ -33,6 +33,12 @@ public record Synapse() {
     // than only once discovered while converting a fault handler.
     public static final String ERROR_MESSAGE_PROPERTY = "ERROR_MESSAGE";
 
+    // A <log>'s own defaults (Synapse's LogMediator#SIMPLE / #CATEGORY_INFO) for a blank level/category
+    // attribute. Shared by the reader (which substitutes them for a blank attribute) and the converter
+    // (which falls back to them for a genuinely unrecognized value), so the two never drift apart.
+    public static final String DEFAULT_LOG_LEVEL = "simple";
+    public static final String DEFAULT_LOG_CATEGORY = "INFO";
+
     public record Api(Kind kind, String name, String context, List<SynapseNode> resources)
             implements SynapseNode {
         public Api(String name, String context, List<SynapseNode> resources) {
@@ -157,6 +163,25 @@ public record Synapse() {
         }
     }
 
+    // <log level="simple|headers|full|custom" category="INFO|TRACE|DEBUG|WARN|ERROR|FATAL"
+    //      separator="string">
+    //   <property name="key" value="literal" | expression="xpath-or-json-eval"/>*
+    // </log>
+    // -> logs a message built from the given level's content plus every listed property (rendered as
+    // "name = value", separator-joined), through the category's logger method. level and category are
+    // independent: level selects what is logged, category selects the severity. Both are normalized
+    // at read time, with Synapse's own defaults (DEFAULT_LOG_LEVEL/DEFAULT_LOG_CATEGORY) substituted
+    // for a blank attribute, so the converter only has to reject a genuinely unrecognized value.
+    // unrecognizedChildren holds the serialized XML of any child other than <property> (real Synapse
+    // has no other child), so the converter can still report it rather than silently dropping it.
+    public record Log(Kind kind, String level, String category, String separator, List<Property> properties,
+                       List<String> unrecognizedChildren) implements SynapseNode {
+        public Log(String level, String category, String separator, List<Property> properties,
+                   List<String> unrecognizedChildren) {
+            this(Kind.LOG, level, category, separator, properties, unrecognizedChildren);
+        }
+    }
+
     // An unsupported mediator captured verbatim so it can be surfaced as a to-do rather than silently
     // dropped. rawXml is the serialized Synapse element; children holds any nested mediators recognised
     // inside a control-flow wrapper (e.g. a <filter>'s <then>/<else>) so they can still be converted.
@@ -218,6 +243,7 @@ public record Synapse() {
         PROPERTY,
         SEQUENCE_MEDIATOR,
         CLASS_MEDIATOR,
+        LOG,
         UNSUPPORTED_MEDIATOR,
         UNSUPPORTED_ARTIFACT,
         INBOUND_ENDPOINT

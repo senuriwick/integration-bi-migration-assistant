@@ -1,25 +1,22 @@
 import ballerina/http;
+import ballerina/log;
 
 function HttpInboundFaultSeq(Context ctx) returns error? {
-    // TODO: Unsupported Synapse mediator '<log>' (from HttpInboundFaultSeq.xml). Mediator not supported; manual conversion required.
-    // Original Synapse:
-    // <log category="ERROR" xmlns="http://ws.apache.org/ns/synapse">
-    //         <message>Inbound error: ${properties.synapse.ERROR_MESSAGE}</message>
-    //     </log>
+    log:printError(string `message = ${"Inbound error"}, errorMessage = ${convertToString(ctx.variables.ERROR_MESSAGE)}`);
     ctx.payload = {"status": "error", "message": ctx.variables.ERROR_MESSAGE};
     ctx.statusCode = 500;
     check respond(ctx);
 }
 
 function HttpInboundSeq(Context ctx) returns error? {
-    // TODO: Unsupported Synapse mediator '<log>' (from HttpInboundSeq.xml). Mediator not supported; manual conversion required.
-    // Original Synapse:
-    // <log category="INFO" logFullPayload="true" xmlns="http://ws.apache.org/ns/synapse">
-    //         <message>Inbound request received</message>
-    //     </log>
+    log:printInfo(string `message = ${"Inbound request received"}`);
     ctx.payload = {"status": "received", "message": "Hello from HTTP Inbound Endpoint"};
     ctx.statusCode = 200;
     check respond(ctx);
+}
+
+function convertToString(anydata v) returns string {
+    return v.toString();
 }
 
 function respond(Context ctx) returns error? {

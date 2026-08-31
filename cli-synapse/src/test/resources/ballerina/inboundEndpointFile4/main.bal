@@ -15,7 +15,7 @@ service on fileInboundEndpointListener {
             check FileProcessSequence();
         } on fail error err {
             ctx.variables.ERROR_MESSAGE = err.message();
-            check FileErrorSequence();
+            check FileErrorSequence(ctx);
         }
     }
 }

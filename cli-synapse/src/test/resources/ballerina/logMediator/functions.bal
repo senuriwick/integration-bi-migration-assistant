@@ -1,16 +1,4 @@
 import ballerina/http;
-import ballerina/log;
-
-function FileErrorSequence(Context ctx) returns error? {
-    log:printError(string `message = ${"File processing failed"}, errorMessage = ${convertToString(ctx.variables.ERROR_MESSAGE)}`);
-}
-
-function FileProcessSequence() returns error? {
-    log:printInfo(string `message = ${"File received and processing complete"}`);
-    // TODO: Unsupported Synapse mediator '<drop>' (from FileProcessSequence.xml). Mediator not supported; manual conversion required.
-    // Original Synapse:
-    // <drop xmlns="http://ws.apache.org/ns/synapse"/>
-}
 
 function convertToString(anydata v) returns string {
     return v.toString();

@@ -1,6 +1,6 @@
 <sequence xmlns="http://ws.apache.org/ns/synapse" name="HttpInboundSeq">
-    <log category="INFO" logFullPayload="true">
-        <message>Inbound request received</message>
+    <log level="custom" category="INFO">
+        <property name="message" value="Inbound request received"/>
     </log>
     <payloadFactory media-type="json">
         <format>{"status": "received", "message": "Hello from HTTP Inbound Endpoint"}</format>

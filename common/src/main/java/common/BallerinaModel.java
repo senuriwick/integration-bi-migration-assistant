@@ -724,6 +724,15 @@ public record BallerinaModel(DefaultPackage defaultPackage, List<Module> modules
             public String toString() {
                 return "string`" + body() + "`";
             }
+
+            // Escapes the characters with special meaning inside a Ballerina backtick string template
+            // (backtick itself, '$' which would otherwise start an interpolation, and the backslash
+            // escape character itself). For raw text spliced into a template body outside of a ${...}
+            // sub-expression — e.g. a literal label or separator built from untrusted/config-sourced
+            // text — since the template itself performs no escaping of its body.
+            public static String escapeText(String raw) {
+                return raw.replace("\\", "\\\\").replace("`", "\\`").replace("$", "\\$");
+            }
         }
 
         record MappingConstructor(List<MappingField> fields) implements Expression {

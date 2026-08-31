@@ -1,6 +1,7 @@
 <sequence xmlns="http://ws.apache.org/ns/synapse" name="HttpInboundFaultSeq">
-    <log category="ERROR">
-        <message>Inbound error: ${properties.synapse.ERROR_MESSAGE}</message>
+    <log level="custom" category="ERROR">
+        <property name="message" value="Inbound error"/>
+        <property name="errorMessage" expression="get-property('ERROR_MESSAGE')"/>
     </log>
     <payloadFactory media-type="json">
         <format>{"status": "error", "message": "${properties.synapse.ERROR_MESSAGE}"}</format>

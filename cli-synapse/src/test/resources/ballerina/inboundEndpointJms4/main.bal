@@ -22,10 +22,10 @@ service "JMSInboundEndpoint" on jMSInboundEndpointListener {
                 fail error("Unsupported JMS message type: expected a TextMessage");
             }
             ctx.payload = message.content;
-            check JMSInjectingSeq();
+            check JMSInjectingSeq(ctx);
         } on fail error err {
             ctx.variables.ERROR_MESSAGE = err.message();
-            check JMSErrorSeq();
+            check JMSErrorSeq(ctx);
         }
     }
 }

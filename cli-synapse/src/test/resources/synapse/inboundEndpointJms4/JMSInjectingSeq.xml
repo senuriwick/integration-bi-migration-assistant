@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <sequence xmlns="http://ws.apache.org/ns/synapse" name="JMSInjectingSeq">
-    <log category="INFO" logFullPayload="true">
-        <message>JMS message received: ${payload}</message>
+    <log level="custom" category="INFO">
+        <property name="message" value="JMS message received"/>
+        <property name="body" expression="$body"/>
     </log>
     <!-- Add your processing logic here -->
     <drop/>

@@ -18,6 +18,7 @@
 package synapse.converter.bir;
 
 import synapse.converter.ScopeContext;
+import synapse.converter.bir.mediators.LogConverter;
 import synapse.converter.bir.mediators.PayloadFactoryConverter;
 import synapse.converter.bir.mediators.PropertyConverter;
 import synapse.converter.bir.mediators.RespondConverter;
@@ -41,6 +42,7 @@ public final class MediatorConverters {
     private static final Map<Kind, BIRConverter<ScopeContext>> MEDIATOR_CONVERTERS = Map.of(
             Kind.PAYLOAD_FACTORY, new PayloadFactoryConverter(),
             Kind.PROPERTY, new PropertyConverter(),
+            Kind.LOG, new LogConverter(),
             Kind.SEQUENCE_MEDIATOR, new SequenceMediatorConverter(),
             Kind.CLASS_MEDIATOR, new ClassMediatorConverter(),
             Kind.RESPOND, new RespondConverter(),

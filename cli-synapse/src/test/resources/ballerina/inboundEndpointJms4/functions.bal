@@ -1,27 +1,23 @@
 import ballerina/http;
+import ballerina/log;
 
-function JMSErrorSeq() returns error? {
-    // TODO: Unsupported Synapse mediator '<log>' (from JMSErrorSeq.xml). Mediator not supported; manual conversion required.
-    // Original Synapse:
-    // <log category="ERROR" xmlns="http://ws.apache.org/ns/synapse">
-    //         <message>JMS error: ${properties.synapse.ERROR_CODE} - ${properties.synapse.ERROR_MESSAGE}</message>
-    //     </log>
-
+function JMSErrorSeq(Context ctx) returns error? {
+    // TODO: unsupported get-property(...) call in expression: 'get-property('ERROR_CODE')'
+    log:printError(string `message = ${"JMS error"}, errorMessage = ${convertToString(ctx.variables.ERROR_MESSAGE)}`);
     // TODO: Unsupported Synapse mediator '<drop>' (from JMSErrorSeq.xml). Mediator not supported; manual conversion required.
     // Original Synapse:
     // <drop xmlns="http://ws.apache.org/ns/synapse"/>
 }
 
-function JMSInjectingSeq() returns error? {
-    // TODO: Unsupported Synapse mediator '<log>' (from JMSInjectingSeq.xml). Mediator not supported; manual conversion required.
-    // Original Synapse:
-    // <log category="INFO" logFullPayload="true" xmlns="http://ws.apache.org/ns/synapse">
-    //         <message>JMS message received: ${payload}</message>
-    //     </log>
-
+function JMSInjectingSeq(Context ctx) returns error? {
+    log:printInfo(string `message = ${"JMS message received"}, body = ${convertToString(ctx.payload)}`);
     // TODO: Unsupported Synapse mediator '<drop>' (from JMSInjectingSeq.xml). Mediator not supported; manual conversion required.
     // Original Synapse:
     // <drop xmlns="http://ws.apache.org/ns/synapse"/>
+}
+
+function convertToString(anydata v) returns string {
+    return v.toString();
 }
 
 function respond(Context ctx) returns error? {

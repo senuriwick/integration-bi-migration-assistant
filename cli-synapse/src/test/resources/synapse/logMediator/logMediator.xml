@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api xmlns="http://ws.apache.org/ns/synapse"
+     name="LogMediatorApi"
+     context="/logmediator">
+    <resource methods="GET" uri-template="/custom">
+        <inSequence>
+            <property name="user" value="alice" scope="default"/>
+            <log level="custom" category="DEBUG" separator=" | ">
+                <property name="event" value="login"/>
+                <property name="user" expression="get-property('user')"/>
+            </log>
+            <respond/>
+        </inSequence>
+    </resource>
+    <resource methods="GET" uri-template="/categories">
+        <inSequence>
+            <log level="custom" category="INFO">
+                <property name="event" value="info-event"/>
+            </log>
+            <log level="custom" category="TRACE">
+                <property name="event" value="trace-event"/>
+            </log>
+            <log level="custom" category="DEBUG">
+                <property name="event" value="debug-event"/>
+            </log>
+            <log level="custom" category="WARN">
+                <property name="event" value="warn-event"/>
+            </log>
+            <log level="custom" category="ERROR">
+                <property name="event" value="error-event"/>
+            </log>
+            <log level="custom" category="FATAL">
+                <property name="event" value="fatal-event"/>
+            </log>
+            <respond/>
+        </inSequence>
+    </resource>
+    <resource methods="GET" uri-template="/full">
+        <inSequence>
+            <payloadFactory media-type="json">
+                <format>{"ping":"pong"}</format>
+            </payloadFactory>
+            <log level="full">
+                <property name="event" value="full-log"/>
+            </log>
+            <respond/>
+        </inSequence>
+    </resource>
+    <resource methods="GET" uri-template="/invalid">
+        <inSequence>
+            <log level="verbose" category="SEVERE">
+                <property name="event" value="bad-attrs"/>
+            </log>
+            <respond/>
+        </inSequence>
+    </resource>
+    <resource methods="GET" uri-template="/emptySeparator">
+        <inSequence>
+            <log level="custom" separator="">
+                <property name="a" value="1"/>
+                <property name="b" value="2"/>
+            </log>
+            <respond/>
+        </inSequence>
+    </resource>
+    <resource methods="GET" uri-template="/unrecognizedChild">
+        <inSequence>
+            <log level="custom">
+                <property name="event" value="weird"/>
+                <message>not a real log child</message>
+            </log>
+            <respond/>
+        </inSequence>
+    </resource>
+    <resource methods="GET" uri-template="/headers">
+        <inSequence>
+            <log level="headers">
+                <property name="event" value="headers-log"/>
+            </log>
+            <respond/>
+        </inSequence>
+    </resource>
+    <resource methods="GET" uri-template="/omElement">
+        <inSequence>
+            <log level="custom">
+                <property name="body"><foo>bar</foo></property>
+            </log>
+            <respond/>
+        </inSequence>
+    </resource>
+</api>

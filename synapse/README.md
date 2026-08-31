@@ -62,13 +62,14 @@ The migration tool currently supports the following Synapse elements:
 | `<respond>` | response return |
 | `<property>` (static name only) | response header, status code, or local variable |
 | `<faultSequence>` (inline or resolved `key="…"` reference to a project-level sequence) | `on fail` clause of a `do` block wrapping the resource body |
+| `<log>` | `log:print{Info,Debug,Warn,Error}` call (see [Known limitations](#known-limitations) for `level`/`category` coverage) |
 
 ## Unsupported constructs (TODOs)
 
 The migration never aborts on an unsupported construct. Instead, every construct with no Ballerina
 translation is surfaced as a TODO so the generated package still builds around the supported parts:
 
-- **Unsupported mediators** (e.g. `<log>`, `<filter>`, `<switch>`, `<call>`) become a `// TODO` comment
+- **Unsupported mediators** (e.g. `<filter>`, `<switch>`, `<call>`) become a `// TODO` comment
   in the generated function body, carrying the original Synapse XML and its source file. For a
   control-flow wrapper (`<filter>`, `<switch>`, `<foreach>`, `<iterate>`, `<aggregate>`, `<clone>`), the supported
   mediators nested in its branches are still converted best-effort (the wrapper's control flow is not
@@ -132,8 +133,15 @@ a case, drop `synapse/<Name>/<Name>.xml` and the expected `ballerina/<Name>` pac
 
 ## Known limitations
 
-- `<proxy>` services, `<log>`, `<filter>` and other mediators/artifacts are not converted, but they no
+- `<proxy>` services, `<filter>` and other mediators/artifacts are not converted, but they no
   longer fail the migration: they are surfaced as TODOs (see [Unsupported constructs](#unsupported-constructs-todos)).
+- A `<log>`'s `level="custom"` is fully converted: its message is exactly its listed `<property>`
+  values, joined by `separator` (matching real Synapse, which logs these regardless of level).
+  `level="simple"`/`"headers"`/`"full"` also log the listed properties (plus, for `"full"`, the current
+  payload), but the built-in fields real Synapse adds for these levels (To/From/WSAction/SOAPAction/
+  ReplyTo/MessageID, SOAP header blocks) have no equivalent in the generated `Context` and are reported
+  as a TODO instead of fabricated. `category`'s severity maps onto Ballerina's `log` module one-for-one
+  except `TRACE` (→ `printDebug`) and `FATAL` (→ `printError`), which the module has no equivalent for.
 - `<outSequence>` (the out flow) is not yet migrated. `<faultSequence>` (the error flow) is now
   supported — an unresolved `key="…"` reference or a resource with no fault sequence at all falls back
   to the project-level default and is reported if unresolved.

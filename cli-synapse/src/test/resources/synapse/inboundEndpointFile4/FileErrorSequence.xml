@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <sequence xmlns="http://ws.apache.org/ns/synapse" name="FileErrorSequence">
-    <log category="ERROR">
-        <message>File processing failed: ${properties.synapse.ERROR_MESSAGE}</message>
+    <log level="custom" category="ERROR">
+        <property name="message" value="File processing failed"/>
+        <property name="errorMessage" expression="get-property('ERROR_MESSAGE')"/>
     </log>
 </sequence>

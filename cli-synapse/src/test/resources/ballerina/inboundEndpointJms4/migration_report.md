@@ -1,18 +1,8 @@
 # Synapse to Ballerina migration report
 
-11 Synapse constructs could not be automatically converted and were left as TODOs in the generated code. Each entry shows the source file and the original Synapse code; review and migrate them manually.
+9 Synapse constructs could not be automatically converted and were left as TODOs in the generated code. Each entry shows the source file and the original Synapse code; review and migrate them manually.
 
-## Unsupported mediator (4)
-
-### `<log>` — JMSErrorSeq.xml
-
-Mediator not supported; manual conversion required.
-
-```xml
-<log category="ERROR" xmlns="http://ws.apache.org/ns/synapse">
-        <message>JMS error: ${properties.synapse.ERROR_CODE} - ${properties.synapse.ERROR_MESSAGE}</message>
-    </log>
-```
+## Unsupported mediator (2)
 
 ### `<drop>` — JMSErrorSeq.xml
 
@@ -20,16 +10,6 @@ Mediator not supported; manual conversion required.
 
 ```xml
 <drop xmlns="http://ws.apache.org/ns/synapse"/>
-```
-
-### `<log>` — JMSInjectingSeq.xml
-
-Mediator not supported; manual conversion required.
-
-```xml
-<log category="INFO" logFullPayload="true" xmlns="http://ws.apache.org/ns/synapse">
-        <message>JMS message received: ${payload}</message>
-    </log>
 ```
 
 ### `<drop>` — JMSInjectingSeq.xml
