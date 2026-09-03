@@ -194,7 +194,7 @@ final class FaultSequenceConverter {
                 new OnFailClause(defaultOnFailBody(resourceContext.hasCaller()), ERROR_BINDING)));
     }
 
-    // Log the error and, if this scope has a reply transport (see ScopeContext#supportsReply), respond
+    // Log the error and, if this scope has a caller (see ScopeContext#hasCaller), respond
     // with an error status and a JSON error payload carrying the caught error's message. respond() is a
     // no-op if the caller has already had a response attempted on it, so this is always safe to call.
     @NotNull
