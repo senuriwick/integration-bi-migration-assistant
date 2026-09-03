@@ -4,7 +4,7 @@
 
 ## Unsupported inbound endpoint parameter (2)
 
-### `<parameter>` — inbound.xml
+### `<parameter name="sequential">` — inbound.xml
 
 Inbound endpoint 'DispatchInbound' parameter 'sequential' is not mapped to any Ballerina construct; manual conversion required.
 
@@ -12,7 +12,7 @@ Inbound endpoint 'DispatchInbound' parameter 'sequential' is not mapped to any B
 <parameter name="sequential">true</parameter>
 ```
 
-### `<parameter>` — inbound.xml
+### `<parameter name="coordination">` — inbound.xml
 
 Inbound endpoint 'DispatchInbound' parameter 'coordination' is not mapped to any Ballerina construct; manual conversion required.
 

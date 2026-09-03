@@ -136,7 +136,9 @@ public class InboundEndpointConverter implements BIRConverter<ConversionContext>
 
     // Exposed so DispatchFilterIndexer's pre-pass can compute the exact same listener name a
     // dispatch.filter.pattern-matched <api> must attach to, before this endpoint has been converted.
+    @NotNull
     public static String httpListenerName(InboundEndpoint inboundEndpoint) {
+        assert inboundEndpoint != null : "inboundEndpoint must not be null";
         return ConversionUtils.lowerFirst(inboundEndpoint.name()) + LISTENER_SUFFIX;
     }
 

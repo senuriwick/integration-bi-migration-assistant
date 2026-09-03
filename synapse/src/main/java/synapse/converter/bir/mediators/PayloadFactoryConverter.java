@@ -22,6 +22,7 @@ import common.BallerinaModel.Expression.BallerinaExpression;
 import common.BallerinaModel.Expression.StringConstant;
 import common.BallerinaModel.Expression.XMLTemplate;
 import common.BallerinaModel.Statement;
+import org.jetbrains.annotations.NotNull;
 import synapse.converter.ConversionContext;
 import synapse.converter.ConversionContext.UnsupportedEntry;
 import synapse.converter.ScopeContext;
@@ -89,12 +90,12 @@ public class PayloadFactoryConverter implements BIRConverter<ScopeContext> {
                                                     List<String> unresolvedProperties) {
         ConversionContext sharedContext = context.shared();
         Set<String> availableProperties = sharedContext.availableDefaultScopeProperties();
-        String wholeValuesResolved =
-                substituteWholeValuePlaceholders(format, sharedContext, availableProperties, unresolvedProperties);
-        return substituteEmbeddedPlaceholders(wholeValuesResolved, sharedContext, availableProperties,
-                unresolvedProperties);
+        return substituteEmbeddedPlaceholders(
+                substituteWholeValuePlaceholders(format, sharedContext, availableProperties, unresolvedProperties),
+                sharedContext, availableProperties, unresolvedProperties);
     }
 
+    @NotNull
     private static String substituteWholeValuePlaceholders(String format, ConversionContext sharedContext,
                                                             Set<String> availableProperties,
                                                             List<String> unresolvedProperties) {
@@ -119,6 +120,7 @@ public class PayloadFactoryConverter implements BIRConverter<ScopeContext> {
     }
 
     // Reached only for a quoted string that WHOLE_VALUE_PLACEHOLDER_PATTERN did not already consume.
+    @NotNull
     private static String substituteEmbeddedPlaceholders(String format, ConversionContext sharedContext,
                                                           Set<String> availableProperties,
                                                           List<String> unresolvedProperties) {
@@ -138,6 +140,7 @@ public class PayloadFactoryConverter implements BIRConverter<ScopeContext> {
         return result.toString();
     }
 
+    @NotNull
     private static String substitutePlaceholdersInBody(String body, ConversionContext sharedContext,
                                                         Set<String> availableProperties,
                                                         List<String> unresolvedInString) {

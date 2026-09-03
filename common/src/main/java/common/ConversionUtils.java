@@ -19,6 +19,7 @@
 package common;
 
 import io.ballerina.compiler.syntax.tree.SyntaxInfo;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -97,7 +98,9 @@ public class ConversionUtils {
      * @param path the slash-separated path
      * @return the path's non-empty segments, in order
      */
+    @NotNull
     public static List<String> splitPathSegments(String path) {
+        assert path != null : "path must not be null";
         List<String> segments = new ArrayList<>();
         for (String segment : path.split("/")) {
             if (!segment.isEmpty()) {

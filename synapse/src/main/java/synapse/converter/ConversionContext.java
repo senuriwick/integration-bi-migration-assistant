@@ -270,6 +270,8 @@ public class ConversionContext {
      * {@link #sequenceMetadata}.
      */
     public void addExtraApiListener(String apiName, String listenerRef) {
+        assert apiName != null : "apiName must not be null";
+        assert listenerRef != null : "listenerRef must not be null";
         extraApiListeners.computeIfAbsent(apiName, key -> new ArrayList<>()).add(listenerRef);
     }
 

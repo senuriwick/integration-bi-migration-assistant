@@ -18,6 +18,7 @@
 package synapse.converter;
 
 import common.ConversionUtils;
+import org.jetbrains.annotations.NotNull;
 import synapse.converter.ConversionContext.UnsupportedEntry;
 import synapse.converter.bir.InboundEndpointConverter;
 import synapse.model.DependencyGraph;
@@ -37,6 +38,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -53,10 +59,22 @@ public final class DispatchFilterIndexer {
     // value, matters for a regex match.
     private static final String PLACEHOLDER_SEGMENT = "x";
 
+    // dispatch.filter.pattern is taken verbatim from config XML with no sanitization, so a pathological
+    // pattern could otherwise hang the conversion via catastrophic backtracking; bound each endpoint's
+    // matching pass to this timeout instead. Daemon threads so a runaway match never blocks JVM exit.
+    private static final long MATCH_TIMEOUT_SECONDS = 2;
+    private static final ExecutorService MATCH_EXECUTOR = Executors.newCachedThreadPool(runnable -> {
+        Thread thread = new Thread(runnable, "dispatch-filter-match");
+        thread.setDaemon(true);
+        return thread;
+    });
+
     private DispatchFilterIndexer() {
     }
 
-    public static void index(DependencyGraph dependencyGraph, ConversionContext context) {
+    public static void index(DependencyGraph dependencyGraph, ConversionContext context, Path sourceRoot) {
+        assert dependencyGraph != null : "dependencyGraph must not be null";
+        assert context != null : "context must not be null";
         List<ArtifactNode> inboundEndpointNodes = new ArrayList<>();
         List<ArtifactNode> apiNodes = new ArrayList<>();
         for (ArtifactNode node : dependencyGraph.nodes().keySet()) {
@@ -66,7 +84,7 @@ public final class DispatchFilterIndexer {
                 apiNodes.add(node);
             }
         }
-        if (inboundEndpointNodes.isEmpty() || apiNodes.isEmpty()) {
+        if (inboundEndpointNodes.isEmpty()) {
             return;
         }
 
@@ -79,13 +97,13 @@ public final class DispatchFilterIndexer {
 
         for (ArtifactNode node : inboundEndpointNodes) {
             if (DependencyResolver.findArtifact(node) instanceof InboundEndpoint inboundEndpoint) {
-                indexInboundEndpoint(inboundEndpoint, apis, node.file(), context);
+                indexInboundEndpoint(inboundEndpoint, apis, node.file(), sourceRoot, context);
             }
         }
     }
 
     private static void indexInboundEndpoint(InboundEndpoint inboundEndpoint, List<Api> apis, Path file,
-                                              ConversionContext context) {
+                                              Path sourceRoot, ConversionContext context) {
         if (!HTTP_PROTOCOLS.contains(inboundEndpoint.protocol().toLowerCase(Locale.ROOT))) {
             return;
         }
@@ -100,31 +118,64 @@ public final class DispatchFilterIndexer {
             // convertHttp still skips generating its own catch-all resource once dispatch.filter.pattern
             // is present at all, regardless of whether it compiles - so an invalid pattern silently
             // leaves the endpoint's listener with no service at all unless reported here.
-            reportInvalidDispatchFilterPattern(inboundEndpoint, dispatchFilterPattern.get(), file, e, context);
+            reportInvalidDispatchFilterPattern(inboundEndpoint, dispatchFilterPattern.get(), file, sourceRoot, e,
+                    context);
             return;
         }
         String listenerName = InboundEndpointConverter.httpListenerName(inboundEndpoint);
-        for (Api api : apis) {
-            if (matches(pattern, api)) {
-                context.addExtraApiListener(api.name(), listenerName);
-            }
+        List<Api> matchedApis;
+        try {
+            matchedApis = MATCH_EXECUTOR.submit(() -> matchingApis(pattern, apis))
+                    .get(MATCH_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            reportComplexDispatchFilterPattern(inboundEndpoint, dispatchFilterPattern.get(), file, sourceRoot,
+                    context);
+            return;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return;
+        } catch (ExecutionException e) {
+            throw new RuntimeException("Failed to evaluate dispatch.filter.pattern for inbound endpoint '"
+                    + inboundEndpoint.name() + "'", e.getCause());
+        }
+        for (Api api : matchedApis) {
+            context.addExtraApiListener(api.name(), listenerName);
         }
     }
 
-    // This pre-pass runs before sourceRoot is known (see SynapseConverter#migrateSynapse), so the report
-    // cites the bare filename rather than a source-root-relative path like every other reported entry.
     private static void reportInvalidDispatchFilterPattern(InboundEndpoint inboundEndpoint, String pattern,
-                                                             Path file, PatternSyntaxException cause,
+                                                             Path file, Path sourceRoot, PatternSyntaxException cause,
                                                              ConversionContext context) {
-        String reason = cause.getDescription() + " near index " + cause.getIndex();
-        String detail = "Inbound endpoint '" + inboundEndpoint.name() + "' parameter '"
-                + Synapse.DISPATCH_FILTER_PATTERN_PARAM + "' is not a valid regular expression (" + reason
-                + "); no <api> can be matched against it, so this endpoint's listener is left with no service at "
-                + "all. Manual conversion required.";
-        String snippet = "<parameter name=\"" + Synapse.DISPATCH_FILTER_PATTERN_PARAM + "\">" + pattern
-                + "</parameter>";
         context.reportUnsupported(new UnsupportedEntry("Unsupported inbound endpoint parameter", "parameter",
-                file == null ? "" : file.getFileName().toString(), detail, snippet));
+                SynapseConverter.relativePath(sourceRoot, file),
+                "Inbound endpoint '" + inboundEndpoint.name() + "' parameter '"
+                        + Synapse.DISPATCH_FILTER_PATTERN_PARAM + "' is not a valid regular expression ("
+                        + cause.getDescription() + " near index " + cause.getIndex()
+                        + "); no <api> can be matched against it, so this endpoint's listener is left with no "
+                        + "service at all. Manual conversion required.",
+                "<parameter name=\"" + Synapse.DISPATCH_FILTER_PATTERN_PARAM + "\">" + pattern + "</parameter>"));
+    }
+
+    private static void reportComplexDispatchFilterPattern(InboundEndpoint inboundEndpoint, String pattern,
+                                                             Path file, Path sourceRoot, ConversionContext context) {
+        context.reportUnsupported(new UnsupportedEntry("Unsupported inbound endpoint parameter", "parameter",
+                SynapseConverter.relativePath(sourceRoot, file),
+                "Inbound endpoint '" + inboundEndpoint.name() + "' parameter '"
+                        + Synapse.DISPATCH_FILTER_PATTERN_PARAM + "' took too long to evaluate against this "
+                        + "project's <api> resources (the expression may be pathologically complex); no <api> "
+                        + "can be matched against it, so this endpoint's listener is left with no service at "
+                        + "all. Manual conversion required.",
+                "<parameter name=\"" + Synapse.DISPATCH_FILTER_PATTERN_PARAM + "\">" + pattern + "</parameter>"));
+    }
+
+    private static List<Api> matchingApis(Pattern pattern, List<Api> apis) {
+        List<Api> matched = new ArrayList<>();
+        for (Api api : apis) {
+            if (matches(pattern, api)) {
+                matched.add(api);
+            }
+        }
+        return matched;
     }
 
     // A pattern is written against real request paths, which may target the api's bare context
@@ -146,6 +197,7 @@ public final class DispatchFilterIndexer {
         return false;
     }
 
+    @NotNull
     private static String representativePath(Resource resource) {
         if (resource.matchAnyPath()) {
             return PLACEHOLDER_SEGMENT;
@@ -157,11 +209,13 @@ public final class DispatchFilterIndexer {
         return String.join("/", segments);
     }
 
+    @NotNull
     private static String joinPath(String context, String resourcePath) {
         String base = context.endsWith("/") ? context.substring(0, context.length() - 1) : context;
         return base + "/" + resourcePath;
     }
 
+    @NotNull
     private static Optional<String> dispatchFilterPattern(InboundEndpoint inboundEndpoint) {
         for (Param parameter : inboundEndpoint.parameters()) {
             if (Synapse.DISPATCH_FILTER_PATTERN_PARAM.equals(parameter.name())) {
