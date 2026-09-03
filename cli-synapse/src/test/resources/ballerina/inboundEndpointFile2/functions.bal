@@ -1,8 +1,34 @@
 import ballerina/http;
+import ballerina/file;
+import ballerina/io;
 import ballerina/log;
 
 function processArchive(Context ctx) returns error? {
     ctx.payload = {"status": "processed"};
+}
+
+function fileArchiveInboundProcessFile(string path) returns error? {
+    Context ctx = {variables: {}};
+    do {
+        ctx.payload = check io:fileReadString(path);
+        check processArchive(ctx);
+        check file:remove(path);
+    } on fail error err {
+        log:printError("Unhandled error in mediation", 'error = err);
+    }
+}
+
+function fileArchiveInboundScanExistingFiles() {
+    do {
+        file:MetaData[] & readonly fileArchiveInboundExistingFiles = check file:readDir(fileArchiveInboundPath);
+        foreach file:MetaData m in fileArchiveInboundExistingFiles {
+            if !m.dir {
+                check fileArchiveInboundProcessFile(m.absPath);
+            }
+        }
+    } on fail error err {
+        log:printError("Failed to process pre-existing files for inbound endpoint 'FileArchiveInbound'", 'error = err);
+    }
 }
 
 function respond(Context ctx) returns error? {
@@ -34,4 +60,8 @@ function emitPayload(Context ctx, http:Request request) returns error? {
     } else {
         ctx.payload = check request.getBinaryPayload();
     }
+}
+
+function init() returns error? {
+    _ = start fileArchiveInboundScanExistingFiles();
 }

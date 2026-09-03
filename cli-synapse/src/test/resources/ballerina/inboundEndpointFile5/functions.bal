@@ -3,30 +3,30 @@ import ballerina/file;
 import ballerina/io;
 import ballerina/log;
 
-function processFile(Context ctx) returns error? {
+function processBinaryFile(Context ctx) returns error? {
     ctx.payload = {"status": "processed"};
 }
 
-function fileInboundProcessFile(string path) returns error? {
+function fileBinaryInboundProcessFile(string path) returns error? {
     Context ctx = {variables: {}};
     do {
-        ctx.payload = check io:fileReadString(path);
-        check processFile(ctx);
+        ctx.payload = check io:fileReadBytes(path);
+        check processBinaryFile(ctx);
     } on fail error err {
         log:printError("Unhandled error in mediation", 'error = err);
     }
 }
 
-function fileInboundScanExistingFiles() {
+function fileBinaryInboundScanExistingFiles() {
     do {
-        file:MetaData[] & readonly fileInboundExistingFiles = check file:readDir(fileInboundPath);
-        foreach file:MetaData m in fileInboundExistingFiles {
+        file:MetaData[] & readonly fileBinaryInboundExistingFiles = check file:readDir(fileBinaryInboundPath);
+        foreach file:MetaData m in fileBinaryInboundExistingFiles {
             if !m.dir {
-                check fileInboundProcessFile(m.absPath);
+                check fileBinaryInboundProcessFile(m.absPath);
             }
         }
     } on fail error err {
-        log:printError("Failed to process pre-existing files for inbound endpoint 'FileInbound'", 'error = err);
+        log:printError("Failed to process pre-existing files for inbound endpoint 'FileBinaryInbound'", 'error = err);
     }
 }
 
@@ -62,5 +62,5 @@ function emitPayload(Context ctx, http:Request request) returns error? {
 }
 
 function init() returns error? {
-    _ = start fileInboundScanExistingFiles();
+    _ = start fileBinaryInboundScanExistingFiles();
 }

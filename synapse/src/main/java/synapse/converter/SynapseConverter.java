@@ -107,6 +107,7 @@ public final class SynapseConverter {
     private static final String NO_REPLY_TRANSPORT_MESSAGE =
             "Cannot send response: no reply transport available for this message";
     private static final String EMIT_PAYLOAD_FUNCTION = "emitPayload";
+    private static final String INIT_FUNCTION = "init";
     private static final String HTTP_CALLER = "http:Caller";
     private static final String HTTP_REQUEST = "http:Request";
     private static final String ERROR_OPTIONAL = "error?";
@@ -192,6 +193,7 @@ public final class SynapseConverter {
         // these fixed functions
         context.reserveFunctionName(RESPOND_FUNCTION);
         context.reserveFunctionName(EMIT_PAYLOAD_FUNCTION);
+        context.reserveFunctionName(INIT_FUNCTION);
 
         Path sourceRoot = sourceRoot(sourcePath);
         registerUnsupportedArtifacts(dependencyGraph, context, sourceRoot);
@@ -225,6 +227,7 @@ public final class SynapseConverter {
             context.classMediatorStubs().forEach(context::addFunction);
             addRespondFunction(context);
             addEmitPayloadFunction(context);
+            addModuleInitFunction(context);
             // Flush the Context record to types.bal now that every artifact's default properties have
             // been collected.
             writeArtifacts(targetDir, context, writtenImports);
@@ -413,6 +416,18 @@ public final class SynapseConverter {
                                         + " else if contentType.startsWith(\"text/\") {"
                                         + " ctx.payload = check request.getTextPayload(); }"
                                         + " else { ctx.payload = check request.getBinaryPayload(); }"))));
+    }
+
+    // A function literally named "init" at module scope is Ballerina's module-initializer form, run
+    // once before any listener starts. Only one is allowed per module, so every converter that needs
+    // startup work contributes statements via ConversionContext.addModuleInitStatements instead of
+    // declaring its own init().
+    private static void addModuleInitFunction(ConversionContext context) {
+        List<Statement> statements = context.moduleInitStatements();
+        if (statements.isEmpty()) {
+            return;
+        }
+        context.addFunction(new Function(INIT_FUNCTION, List.of(), new BallerinaType(ERROR_OPTIONAL), statements));
     }
 
     @NotNull
