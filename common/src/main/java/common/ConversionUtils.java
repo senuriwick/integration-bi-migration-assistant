@@ -20,6 +20,8 @@ package common;
 
 import io.ballerina.compiler.syntax.tree.SyntaxInfo;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Pattern;
 
 public class ConversionUtils {
@@ -85,6 +87,24 @@ public class ConversionUtils {
     public static String lowerFirst(String identifier) {
         return identifier.isEmpty() ? identifier
                 : Character.toLowerCase(identifier.charAt(0)) + identifier.substring(1);
+    }
+
+    /**
+     * Splits a slash-separated path into its non-empty segments, e.g. {@code "/foo//{bar}/"} becomes
+     * {@code ["foo", "{bar}"]}. Callers decide how to render a template segment (e.g. {@code {bar}})
+     * themselves; this only handles the split-and-drop-empties step shared by every caller.
+     *
+     * @param path the slash-separated path
+     * @return the path's non-empty segments, in order
+     */
+    public static List<String> splitPathSegments(String path) {
+        List<String> segments = new ArrayList<>();
+        for (String segment : path.split("/")) {
+            if (!segment.isEmpty()) {
+                segments.add(segment);
+            }
+        }
+        return segments;
     }
 
     /**
