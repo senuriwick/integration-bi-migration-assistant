@@ -392,6 +392,30 @@ public record Scope(String name, Collection<Flow> flows, Collection<Sequence> se
                         }
                     }
 
+                    record JavaInvoke(String className, String methodName, boolean staticMethod,
+                                      String returnType, List<Parameter> parameters)
+                            implements ActivityExtension.Config {
+
+                        public JavaInvoke {
+                            assert !className.isEmpty();
+                            assert !methodName.isEmpty();
+                            parameters = List.copyOf(parameters);
+                        }
+
+                        @Override
+                        public @NotNull ExtensionKind kind() {
+                            return ExtensionKind.JAVA_INVOKE;
+                        }
+
+                        public record Parameter(String name, String type) {
+
+                            public Parameter {
+                                assert !name.isEmpty();
+                                assert !type.isEmpty();
+                            }
+                        }
+                    }
+
                     record Log() implements ActivityExtension.Config {
 
                         @Override
@@ -554,6 +578,7 @@ public record Scope(String name, Collection<Flow> flows, Collection<Sequence> se
                         PARSE_XML,
                         SEND_HTTP_RESPONSE,
                         SFTP_RENAME_FILE,
+                        JAVA_INVOKE,
                         MAPPER,
                         BW_ASSIGN,
                         SQL;
@@ -570,6 +595,7 @@ public record Scope(String name, Collection<Flow> flows, Collection<Sequence> se
                                 case "bw.file.rename" -> FILE_RENAME;
                                 case "bw.file.list" -> LIST_FILES;
                                 case "bw.sftp.renameFile" -> SFTP_RENAME_FILE;
+                                case "bw.java.javamethod" -> JAVA_INVOKE;
                                 case "bw.generalactivities.log" -> LOG;
                                 case "bw.psglog.Log" -> PSG_LOG;
                                 case "bw.psglog.ExceptionLog" -> PSG_EXCEPTION_LOG;

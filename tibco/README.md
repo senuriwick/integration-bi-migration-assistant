@@ -21,6 +21,7 @@
     - `bw.file.rename`
     - `bw.file.list`
     - `bw.sftp.renameFile`
+    - `bw.java.javamethod` (static methods with string, primitive and string array parameters)
     - `bw.generalactivities.log`
     - `bw.psglog.Log`
     - `bw.psglog.ExceptionLog`

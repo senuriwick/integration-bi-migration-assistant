@@ -1410,6 +1410,7 @@ public final class XmlToTibcoModelParser {
             case FILE_RENAME -> parseFileRename(activity);
             case LIST_FILES -> parseListFiles(activity);
             case SFTP_RENAME_FILE -> parseSFTPRenameFile(activity);
+            case JAVA_INVOKE -> parseJavaInvoke(activity);
             case HTTP_SEND -> parseHTTPSend(activity);
             case REST_INVOKE -> parseRestInvoke(activity);
             case JSON_RENDER -> parseJSONOperation(config, Config.ExtensionKind.JSON_RENDER);
@@ -1448,6 +1449,19 @@ public final class XmlToTibcoModelParser {
         Element properties = getFirstChildWithTag(activityConfig, "properties");
         Element value = getFirstChildWithTag(properties, "value");
         return new Config.SFTPRenameFile(value.getAttribute("sftpConnection"));
+    }
+
+    private static Config.@NotNull JavaInvoke parseJavaInvoke(Element activity) {
+        Element activityConfig = getFirstChildWithTag(activity, "activityConfig");
+        Element properties = getFirstChildWithTag(activityConfig, "properties");
+        Element value = getFirstChildWithTag(properties, "value");
+        List<Config.JavaInvoke.Parameter> parameters = getChildrenWithTag(value, "methodParameter")
+                .map(parameter -> new Config.JavaInvoke.Parameter(parameter.getAttribute("paramName"),
+                        parameter.getAttribute("paramType")))
+                .toList();
+        return new Config.JavaInvoke(value.getAttribute("className"), value.getAttribute("methodName"),
+                Boolean.parseBoolean(value.getAttribute("isStaticMethod")),
+                parseOptionalAttribute(value, "methodReturn").orElse("void"), parameters);
     }
   
     private static Config.@NotNull ParseXML parseXmlParseExtension(Element activity) {
