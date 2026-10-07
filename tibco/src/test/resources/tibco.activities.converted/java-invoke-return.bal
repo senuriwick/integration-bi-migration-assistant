@@ -5,7 +5,7 @@ function activityExtension(Context cx) returns error? {
     xml var2 = check xslt:transform(var0, var1, cx.variables);
     int var3 = check int:fromString((var2/**/<value>/*).toString().trim());
     float var4 = check float:fromString((var2/**/<factor>/*).toString().trim());
-    float var5 = check TextTools_scale(var3, var4);
+    float var5 = check trap TextTools_scale(var3, var4);
     xml var6 = xml`<root><MethodReturnValue>${var5}</MethodReturnValue></root>`;
     addToContext(cx, "ScaleTotal", var6);
 }

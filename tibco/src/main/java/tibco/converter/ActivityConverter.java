@@ -1955,7 +1955,9 @@ final class ActivityConverter {
         for (int index = 0; index < parameterTypes.size(); index++) {
             arguments.add(javaInvokeArgument(cx, body, result, parameterNames.get(index), parameterTypes.get(index)));
         }
-        String call = "%s(%s)".formatted(function, String.join(", ", arguments));
+        // Unchecked Java exceptions panic instead of returning an error, so the call is trapped to send them to
+        // the error link as TIBCO does with every exception the method raises.
+        String call = "trap %s(%s)".formatted(function, String.join(", ", arguments));
         if (returnType.isEmpty()) {
             body.add(new CallStatement(new Check(exprFrom(call))));
             VarDeclStatment output = new VarDeclStatment(XML, cx.getAnnonVarName(), new XMLTemplate("<root></root>"));

@@ -15,7 +15,7 @@ function JoinNames(Context cx) returns error? {
     foreach int index in 0 ..< var4.length() {
         arrays:set(var5, index, java:fromString(var4[index]));
     }
-    handle var6 = check TextTools_join(var3, var5);
+    handle var6 = check trap TextTools_join(var3, var5);
     string? var7 = java:toString(var6);
     xml var8 = xml `<root>${var7 is () ? xml `` : xml `<MethodReturnValue>${var7}</MethodReturnValue>`}</root>`;
     addToContext(cx, "JoinNames", var8);
@@ -28,7 +28,7 @@ function ScaleTotal(Context cx) returns error? {
     xml var2 = check xslt:transform(var0, var1, cx.variables);
     int var3 = check int:fromString((var2/**/<value>/*).toString().trim());
     float var4 = check float:fromString((var2/**/<factor>/*).toString().trim());
-    float var5 = check TextTools_scale(var3, var4);
+    float var5 = check trap TextTools_scale(var3, var4);
     xml var6 = xml `<root><MethodReturnValue>${var5}</MethodReturnValue></root>`;
     addToContext(cx, "ScaleTotal", var6);
 }

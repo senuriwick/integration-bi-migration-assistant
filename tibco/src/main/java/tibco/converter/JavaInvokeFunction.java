@@ -42,8 +42,8 @@ record JavaInvokeFunction(String functionName, String className, String methodNa
         parameterTypes = List.copyOf(parameterTypes);
     }
 
-    // Java exceptions surface as Ballerina errors only when the return type admits one, so every declaration
-    // includes error to route them to the activity's error link.
+    // Including error lets checked exceptions come back as errors, and it is accepted even for methods that
+    // declare none; unchecked exceptions still panic and are trapped at the call site.
     @Override
     public String intrinsify() {
         String parameters = IntStream.range(0, parameterTypes.size())

@@ -10,7 +10,7 @@ function activityExtension(Context cx) returns error? {
     arrays:set(var5, index, java:fromString(var4[index]));
 }
 
-    check Archiver_archive(var3, var5);
+    check trap Archiver_archive(var3, var5);
     xml var6 = xml`<root></root>`;
     addToContext(cx, "ArchiveReports", var6);
 }
