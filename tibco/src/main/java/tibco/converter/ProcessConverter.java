@@ -29,7 +29,6 @@ import common.BallerinaModel.Expression.XMLTemplate;
 import common.BallerinaModel.Parameter;
 import common.BallerinaModel.Statement;
 import common.BallerinaModel.Statement.Return;
-import common.BallerinaModel.Statement.VarAssignStatement;
 import common.BallerinaModel.Statement.VarDeclStatment;
 import common.BallerinaModel.TypeDesc;
 import common.BallerinaModel.TypeDesc.UnionTypeDesc;
@@ -48,7 +47,6 @@ import tibco.model.Scope.Flow.Activity;
 import tibco.model.Scope.Flow.Activity.Expression.XPath;
 import tibco.model.Type;
 import tibco.model.Variable;
-import tibco.xslt.TibcoFunctions;
 
 import java.math.BigDecimal;
 import java.time.DateTimeException;
@@ -90,7 +88,7 @@ public class ProcessConverter {
         ExplicitTransitionGroup.InlineActivity startActivity = group.startActivity().orElseThrow();
         return switch (startActivity) {
             case HttpEventSource httpEventSource ->
-                    serviceResult(createHTTPServiceForStartActivity(cx, group, httpEventSource));
+                    serviceResult(createHTTPServiceForStartActivity(cx, httpEventSource));
             case FileEventSource fileEventSource ->
                     serviceResult(createFileEventServiceForStartActivity(cx, group, fileEventSource));
             case ExplicitTransitionGroup.InlineActivity.JMSQueueEventSource jmsQueueEventSource ->
@@ -255,9 +253,8 @@ public class ProcessConverter {
     }
 
     private static BallerinaModel.@NotNull Service createHTTPServiceForStartActivity(ProcessContext cx,
-                                                                                     ExplicitTransitionGroup group,
                                                                                      HttpEventSource startActivity) {
-        BallerinaModel.Resource resource = generateResourceFunctionForHTTPStartActivity(cx, group);
+        BallerinaModel.Resource resource = generateResourceFunctionForHTTPStartActivity(cx);
 
         // Handle missing HTTP listener resource
         Optional<VariableReference> listenerOpt = cx.getProjectContext().httpListener(startActivity.sharedChannel());
@@ -279,8 +276,7 @@ public class ProcessConverter {
         return new BallerinaModel.Service("", listenerRef.varName(), List.of(resource));
     }
 
-    private static BallerinaModel.@NotNull Resource generateResourceFunctionForHTTPStartActivity(
-            ProcessContext cx, ExplicitTransitionGroup group) {
+    private static BallerinaModel.@NotNull Resource generateResourceFunctionForHTTPStartActivity(ProcessContext cx) {
         List<Statement> body = new ArrayList<>();
         VarDeclStatment jobSharedVariables =
                 new VarDeclStatment(new TypeDesc.MapTypeDesc(
@@ -307,22 +303,13 @@ public class ProcessConverter {
                 new FunctionCall(cx.getInitContextFn(), List.of(paramXmlDecl.ref(), jobSharedVariables.ref())));
         body.add(contextDecl);
 
-        // TODO: it is better if we can reuse the same logic as Process6 where we use the intrinsic and return
-        //  http response. But we need to refactor how deal with return bindings
+        // The start function applies the process's return bindings, so cx.result is already the declared output.
         body.add(new Statement.CallStatement(
                 new Check(new FunctionCall(cx.getProcessStartFunction().name(), List.of(contextDecl.ref())))));
         VarDeclStatment resultDecl =
                         new VarDeclStatment(XML, "response",
                                         ConversionUtils.getXMLResultFromContext(contextDecl.ref()));
         body.add(resultDecl);
-        group.returnBindings().ifPresent(binding -> {
-            ActivityConverter.XsltTransformResult transformResult = xsltTransform(cx, resultDecl.ref(), binding);
-            if (!transformResult.nonStandardFunctions().isEmpty()) {
-                        body.add(new Statement.Comment("WARNING: Non-standard XSLT functions detected: " +
-                    String.join(", ", transformResult.nonStandardFunctions())));
-            }
-            body.add(new VarAssignStatement(resultDecl.ref(), transformResult.expression()));
-        });
         body.add(new Return<>(resultDecl.ref()));
         return new BallerinaModel.Resource("'default[string... path]", "",
                 List.of(parameter), Optional.of(UnionTypeDesc.of(XML, ERROR)), body);
@@ -680,8 +667,11 @@ private static Optional<BallerinaModel.Function> tryGenerateFunction(
 
         AnalysisResult.ControlFlowFunctions controlFn =
                 cx.getAnalysisResult().getControlFlowFunctions(process.transitionGroup());
-        String scopeFn = controlFn.scopeFn();
-        List<Statement> body = List.of(new Return<>(new FunctionCall(scopeFn, List.of(parameters.getFirst().ref()))));
+        FunctionCall runScope = new FunctionCall(controlFn.scopeFn(), List.of(parameters.getFirst().ref()));
+        List<Statement> body = process.transitionGroup().returnBindings()
+                .map(returnBindings -> Stream.concat(Stream.of(new Statement.CallStatement(new Check(runScope))),
+                        ActivityConverter.convertReturnBindings(cx, returnBindings).stream()).toList())
+                .orElseGet(() -> List.of(new Return<>(runScope)));
         Optional<String> visibility = cx.isShared(process) ? Optional.of("public") : Optional.empty();
         return new BallerinaModel.Function(visibility, cx.getProcessStartFunction().name(), parameters,
                 Optional.of(scopeFnType.returnType()), new BallerinaModel.BlockFunctionBody(body));
@@ -944,25 +934,6 @@ private static Optional<BallerinaModel.Function> tryGenerateFunction(
         TypeDesc.FunctionTypeDesc errorFlowFnType = ConversionUtils.errorFlowFnType(cx);
         return new BallerinaModel.Function(errorHandlerFunction,
                 errorFlowFnType.parameters(), errorFlowFnType.returnType(), body);
-    }
-
-    private static ActivityConverter.XsltTransformResult xsltTransform(ProcessContext cx,
-                                                                       VariableReference inputVariable,
-                                                                       Activity.Expression.XSLT xslt) {
-        cx.addLibraryImport(Library.XSLT);
-        String xsltContent = TibcoFunctions.rewrite(xslt.expression());
-
-        // Detect non-standard functions (Tibco-specific functions)
-        List<String> nonStandardFunctions = ActivityConverter.detectNonStandardFunctions(xsltContent);
-
-        List<Expression> arguments = new ArrayList<>(List.of(inputVariable, new XMLTemplate(xsltContent)));
-        if (!TibcoFunctions.uuidParameters(xsltContent).isEmpty()) {
-            arguments.add(ActivityConverter.xsltParameters(cx, xsltContent, exprFrom("{}")));
-        }
-        Expression expression = new Check(new FunctionCall(ActivityConverter.XSLTConstants.XSLT_TRANSFORM_FUNCTION,
-                arguments));
-
-        return new ActivityConverter.XsltTransformResult(expression, nonStandardFunctions);
     }
 
     private static List<Statement> initJobSharedVariables(ProjectContext projectContext,
