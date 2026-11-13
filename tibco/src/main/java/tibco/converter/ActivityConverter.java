@@ -2849,7 +2849,7 @@ final class ActivityConverter {
     }
 
     @NotNull
-    static BallerinaModel.Expression xsltParameters(ProcessContext cx, String styleSheet,
+    private static BallerinaModel.Expression xsltParameters(ProcessContext cx, String styleSheet,
                                                     BallerinaModel.Expression variables) {
         List<String> uuidParameters = TibcoFunctions.uuidParameters(styleSheet);
         if (uuidParameters.isEmpty()) {
@@ -2872,7 +2872,7 @@ final class ActivityConverter {
     }
 
     @NotNull
-    static List<String> detectNonStandardFunctions(String xsltContent) {
+    private static List<String> detectNonStandardFunctions(String xsltContent) {
         List<String> nonStandardFunctions = new ArrayList<>();
 
         // Pattern to match Tibco-specific functions like tib:trim, tib:parse-dateTime, etc.
@@ -2921,9 +2921,6 @@ final class ActivityConverter {
     record XsltTransformResult(List<Statement> statements, BallerinaModel.Expression expression,
                                List<String> nonStandardFunctions) {
 
-        XsltTransformResult(BallerinaModel.Expression expression, List<String> nonStandardFunctions) {
-            this(List.of(), expression, nonStandardFunctions);
-        }
     }
     static final class XSLTConstants {
 

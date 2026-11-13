@@ -88,7 +88,7 @@ public class ProcessConverter {
         ExplicitTransitionGroup.InlineActivity startActivity = group.startActivity().orElseThrow();
         return switch (startActivity) {
             case HttpEventSource httpEventSource ->
-                    serviceResult(createHTTPServiceForStartActivity(cx, httpEventSource));
+                    serviceResult(createHTTPServiceForStartActivity(cx, group, httpEventSource));
             case FileEventSource fileEventSource ->
                     serviceResult(createFileEventServiceForStartActivity(cx, group, fileEventSource));
             case ExplicitTransitionGroup.InlineActivity.JMSQueueEventSource jmsQueueEventSource ->
@@ -253,8 +253,9 @@ public class ProcessConverter {
     }
 
     private static BallerinaModel.@NotNull Service createHTTPServiceForStartActivity(ProcessContext cx,
+                                                                                     ExplicitTransitionGroup group,
                                                                                      HttpEventSource startActivity) {
-        BallerinaModel.Resource resource = generateResourceFunctionForHTTPStartActivity(cx);
+        BallerinaModel.Resource resource = generateResourceFunctionForHTTPStartActivity(cx, group);
 
         // Handle missing HTTP listener resource
         Optional<VariableReference> listenerOpt = cx.getProjectContext().httpListener(startActivity.sharedChannel());
@@ -276,7 +277,8 @@ public class ProcessConverter {
         return new BallerinaModel.Service("", listenerRef.varName(), List.of(resource));
     }
 
-    private static BallerinaModel.@NotNull Resource generateResourceFunctionForHTTPStartActivity(ProcessContext cx) {
+    private static BallerinaModel.@NotNull Resource generateResourceFunctionForHTTPStartActivity(
+            ProcessContext cx, ExplicitTransitionGroup group) {
         List<Statement> body = new ArrayList<>();
         VarDeclStatment jobSharedVariables =
                 new VarDeclStatment(new TypeDesc.MapTypeDesc(
@@ -303,14 +305,11 @@ public class ProcessConverter {
                 new FunctionCall(cx.getInitContextFn(), List.of(paramXmlDecl.ref(), jobSharedVariables.ref())));
         body.add(contextDecl);
 
-        // The start function applies the process's return bindings, so cx.result is already the declared output.
         body.add(new Statement.CallStatement(
                 new Check(new FunctionCall(cx.getProcessStartFunction().name(), List.of(contextDecl.ref())))));
-        VarDeclStatment resultDecl =
-                        new VarDeclStatment(XML, "response",
-                                        ConversionUtils.getXMLResultFromContext(contextDecl.ref()));
-        body.add(resultDecl);
-        body.add(new Return<>(resultDecl.ref()));
+        Expression.FieldAccess result = ConversionUtils.getXMLResultFromContext(contextDecl.ref());
+        // The start function root-wraps the bound output for Call Process callers; HTTP clients get the End document.
+        body.add(new Return<>(group.returnBindings().isPresent() ? exprFrom(result + "/*") : result));
         return new BallerinaModel.Resource("'default[string... path]", "",
                 List.of(parameter), Optional.of(UnionTypeDesc.of(XML, ERROR)), body);
     }
