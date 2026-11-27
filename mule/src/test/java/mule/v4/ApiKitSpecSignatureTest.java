@@ -57,7 +57,7 @@ public class ApiKitSpecSignatureTest {
 
     @Test
     public void testTypesParametersOfSpecOperation() {
-        assertContains("resource function get api/orders/[string orderId](boolean? expand, "
+        assertContains("resource function get api/orders/[string orderId]((\"true\"|\"false\")? expand, "
                 + "@http:Header MarketId marketId, @http:Header {name: \"x-correlation-id\"} string? xCorrelationId, "
                 + "http:Request request) returns http:Response|error {");
         assertContains("Context ctx = {attributes: {request, response: new, uriParams: {orderId}}};");

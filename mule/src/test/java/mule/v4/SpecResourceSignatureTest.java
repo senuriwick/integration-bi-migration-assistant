@@ -59,7 +59,7 @@ public class SpecResourceSignatureTest {
 
         SpecResourceSignature get = signature(spec, typeGenerator, "get", "/orders/{orderId}");
         Assert.assertEquals(get.resourcePath(), "orders/[string orderId]");
-        Assert.assertEquals(rendered(get), List.of("boolean? expand", "@http:Header MarketId marketId",
+        Assert.assertEquals(rendered(get), List.of("(\"true\"|\"false\")? expand", "@http:Header MarketId marketId",
                 "@http:Header {name: \"x-correlation-id\"} string? xCorrelationId", "http:Request request"));
         Assert.assertEquals(get.uriParamsInit(), Optional.of("{orderId}"));
         Assert.assertEquals(get.payloadRef(), Optional.empty());
@@ -95,15 +95,16 @@ public class SpecResourceSignatureTest {
 
     @Test
     public void testTypesAndEscapesPathSegments() {
-        Operation operation = operation("/orders/{order-id}/items/{itemId}/fraud-risk/{type}",
-                List.of(param("order-id", STRING, true), param("itemId", INTEGER, true), param("type", STRING, true)),
+        Operation operation = operation("/orders/{order-id}/items/{itemId}/fraud-risk/{type}/{active}",
+                List.of(param("order-id", STRING, true), param("itemId", INTEGER, true), param("type", STRING, true),
+                        param("active", BOOLEAN, true)),
                 List.of(), List.of(), Map.of());
 
         SpecResourceSignature signature = of(operation, Map.of(), Optional.empty());
-        Assert.assertEquals(signature.resourcePath(),
-                "orders/[string orderId]/items/[int itemId]/fraud\\-risk/[string 'type]");
-        Assert.assertEquals(signature.uriParamsInit(),
-                Optional.of("{\"order-id\": orderId, \"itemId\": itemId.toString(), \"type\": 'type}"));
+        Assert.assertEquals(signature.resourcePath(), "orders/[string orderId]/items/[int itemId]/fraud\\-risk/"
+                + "[string 'type]/[(\"true\"|\"false\") active]");
+        Assert.assertEquals(signature.uriParamsInit(), Optional.of(
+                "{\"order-id\": orderId, \"itemId\": itemId.toString(), \"type\": 'type, active}"));
     }
 
     @Test
@@ -130,24 +131,30 @@ public class SpecResourceSignatureTest {
                         param("page-size", new ApiType.Ref("Count"), false),
                         param("tags", new ApiType.Array(STRING, Constraints.NONE), true),
                         param("expand", new ApiType.Union(List.of(BOOLEAN, new ApiType.Nil())), true),
+                        param("active", BOOLEAN, true),
+                        param("flags", new ApiType.Array(BOOLEAN, Constraints.NONE), false),
                         param("status", new ApiType.Ref("Status"), true),
                         param("filter", new ApiType.Ref("Filter"), false),
                         param("type", STRING, false),
                         param("request", STRING, false)),
-                List.of(param("X-Request-Correlation", STRING, false), param("ID", INTEGER, true)),
+                List.of(param("X-Request-Correlation", STRING, false), param("ID", INTEGER, true),
+                        param("dry-run", BOOLEAN, false)),
                 Map.of());
 
         Assert.assertEquals(rendered(of(operation, types, Optional.empty())), List.of(
                 "string sku",
                 "@http:Query {name: \"page-size\"} int? pageSize",
                 "string[] tags",
-                "boolean? expand",
+                "(\"true\"|\"false\")? expand",
+                "(\"true\"|\"false\") active",
+                "(\"true\"|\"false\")[]? flags",
                 "string status",
                 "string? filter",
                 "@http:Query {name: \"type\"} string? 'type",
                 "@http:Query {name: \"request\"} string? requestQuery",
                 "@http:Header {name: \"X-Request-Correlation\"} string? xRequestCorrelation",
                 "@http:Header {name: \"ID\"} int id",
+                "@http:Header {name: \"dry-run\"} (\"true\"|\"false\")? dryRun",
                 "http:Request request"));
     }
 
@@ -206,9 +213,10 @@ public class SpecResourceSignatureTest {
 
     @Test
     public void testGeneratedResourceParses() {
-        Operation operation = operation("/orders/{order-id}/fraud-risk",
-                List.of(param("order-id", INTEGER, true)),
-                List.of(param("page-size", INTEGER, false), param("type", STRING, true)),
+        Operation operation = operation("/orders/{order-id}/fraud-risk/{active}",
+                List.of(param("order-id", INTEGER, true), param("active", BOOLEAN, true)),
+                List.of(param("page-size", INTEGER, false), param("type", STRING, true),
+                        param("expand", BOOLEAN, false)),
                 List.of(param("client-id", STRING, true)),
                 Map.of("application/json", UNTYPED_BODY));
         SpecResourceSignature signature = of(operation, Map.of(), Optional.empty());

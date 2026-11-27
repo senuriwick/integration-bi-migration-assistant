@@ -25,7 +25,7 @@ service http:InterceptableService / on http\-listener\-config {
         return error APIKIT__NOT_IMPLEMENTED("APIKIT:NOT_IMPLEMENTED");
     }
 
-    resource function get api/orders/[string orderId](boolean? expand, @http:Header MarketId marketId, @http:Header {name: "x-correlation-id"} string? xCorrelationId, http:Request request) returns http:Response|error {
+    resource function get api/orders/[string orderId](("true"|"false")? expand, @http:Header MarketId marketId, @http:Header {name: "x-correlation-id"} string? xCorrelationId, http:Request request) returns http:Response|error {
         Context ctx = {attributes: {request, response: new, uriParams: {orderId}}};
         log:printInfo(string `Fetching order ${ctx.attributes.uriParams.get("orderId").toString()}`);
 

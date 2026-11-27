@@ -53,6 +53,7 @@ public record SpecResourceSignature(String resourcePath, List<Parameter> paramet
                                     Optional<String> payloadRef) {
 
     private static final String PAYLOAD_NAME = "payload";
+    private static final String BOOLEAN_LITERALS = "(\"true\"|\"false\")";
     private static final Pattern PATH_PARAM = Pattern.compile("\\{([^}]+)}");
     private static final Pattern WORD_SEPARATOR = Pattern.compile("[^A-Za-z0-9]+");
 
@@ -98,11 +99,12 @@ public record SpecResourceSignature(String resourcePath, List<Parameter> paramet
             }
             String specName = segment.substring(1, segment.length() - 1);
             String type = Optional.ofNullable(uriParamsByName.get(specName))
-                    .map(param -> scalarType(param.type(), types).orElse("string"))
+                    .map(param -> valueScalarType(param.type(), types))
                     .orElse("string");
             String name = uniqueName(variableName(specName), "Param", usedNames);
             segments.add("[%s %s]".formatted(type, name));
-            uriParamsInit.put(specName, type.equals("string") ? name : name + ".toString()");
+            uriParamsInit.put(specName,
+                    type.equals("string") || type.equals(BOOLEAN_LITERALS) ? name : name + ".toString()");
         }
 
         List<Parameter> parameters = new ArrayList<>();
@@ -180,9 +182,15 @@ public record SpecResourceSignature(String resourcePath, List<Parameter> paramet
     private static String valueType(ApiType type, Map<String, ApiType> types) {
         ApiType resolved = nonNil(resolve(type, types, new HashSet<>()), types);
         if (resolved instanceof ApiType.Array array) {
-            return scalarType(array.items(), types).orElse("string") + "[]";
+            return valueScalarType(array.items(), types) + "[]";
         }
-        return scalarType(resolved, types).orElse("string");
+        return valueScalarType(resolved, types);
+    }
+
+    // Ballerina binds every value other than true to a boolean as false, where APIkit rejects it
+    private static String valueScalarType(ApiType type, Map<String, ApiType> types) {
+        String scalarType = scalarType(type, types).orElse("string");
+        return scalarType.equals("boolean") ? BOOLEAN_LITERALS : scalarType;
     }
 
     private static Optional<String> scalarType(ApiType type, Map<String, ApiType> types) {
